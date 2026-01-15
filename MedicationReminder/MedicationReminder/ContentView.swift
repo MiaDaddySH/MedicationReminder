@@ -9,53 +9,28 @@ import SwiftUI
 import SwiftData
 
 struct ContentView: View {
-    @Environment(\.modelContext) private var modelContext
-    @StateObject private var viewModel = MedicationListViewModel()
-
     var body: some View {
-        NavigationSplitView {
-            List {
-                ForEach(viewModel.items) { item in
-                    NavigationLink {
-                        Text("Item at \(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))")
-                    } label: {
-                        Text(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))
-                    }
-                }
-                .onDelete(perform: deleteItems)
+        TabView {
+            NavigationStack {
+                MedicationListView()
             }
-#if os(macOS)
-            .navigationSplitViewColumnWidth(min: 180, ideal: 200)
-#endif
-            .toolbar {
-#if os(iOS)
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    EditButton()
-                }
-#endif
-                ToolbarItem {
-                    Button(action: addItem) {
-                        Label("Add Item", systemImage: "plus")
-                    }
-                }
+            .tabItem {
+                Label("要吃的药", systemImage: "list.bullet.clipboard")
             }
-        } detail: {
-            Text("Select an item")
-        }
-        .onAppear {
-            viewModel.configure(modelContext: modelContext)
-        }
-    }
 
-    private func addItem() {
-        withAnimation {
-            viewModel.addItem()
-        }
-    }
+            NavigationStack {
+                MedicationsView()
+            }
+            .tabItem {
+                Label("药物", systemImage: "pills")
+            }
 
-    private func deleteItems(offsets: IndexSet) {
-        withAnimation {
-            viewModel.deleteItems(at: offsets)
+            NavigationStack {
+                MoreView()
+            }
+            .tabItem {
+                Label("更多", systemImage: "ellipsis")
+            }
         }
     }
 }
