@@ -23,9 +23,14 @@ final class MedicationListViewModel: ObservableObject {
         }
     }
 
-    func addItem() {
+    func addMedication(name: String, date: Date, time: Date, amount: String) {
         guard let modelContext else { return }
-        let newItem = Item(timestamp: Date())
+        var components = Calendar.current.dateComponents([.year, .month, .day], from: date)
+        let timeComponents = Calendar.current.dateComponents([.hour, .minute], from: time)
+        components.hour = timeComponents.hour
+        components.minute = timeComponents.minute
+        let scheduledDate = Calendar.current.date(from: components) ?? date
+        let newItem = Item(timestamp: scheduledDate, name: name, amount: amount)
         modelContext.insert(newItem)
         try? modelContext.save()
         fetchItems()

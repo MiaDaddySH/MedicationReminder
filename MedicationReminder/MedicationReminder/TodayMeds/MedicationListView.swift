@@ -6,6 +6,7 @@ struct MedicationListView: View {
     @StateObject private var viewModel = MedicationListViewModel()
     @State private var selectedDate = Date()
     @State private var isShowingDatePicker = false
+    @State private var isPresentingNewMedicationFlow = false
 
     private var titleLine1: String {
         if Calendar.current.isDateInToday(selectedDate) {
@@ -26,9 +27,20 @@ struct MedicationListView: View {
         List {
             ForEach(viewModel.items) { item in
                 NavigationLink {
-                    Text("Item at \(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))")
+                    VStack(alignment: .leading, spacing: 8) {
+                        Text(item.name)
+                            .font(.headline)
+                        Text(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .shortened))
+                        Text("剂量：\(item.amount)")
+                            .foregroundStyle(.secondary)
+                    }
                 } label: {
-                    Text(item.timestamp, format: Date.FormatStyle(date: .numeric, time: .standard))
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text(item.name)
+                        Text(item.timestamp, format: Date.FormatStyle(time: .shortened))
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
                 }
             }
             .onDelete(perform: deleteItems)
@@ -49,13 +61,10 @@ struct MedicationListView: View {
                 }
                 .buttonStyle(.plain)
             }
-#if os(iOS)
-            ToolbarItem(placement: .navigationBarTrailing) {
-                EditButton()
-            }
-#endif
             ToolbarItem {
-                Button(action: addItem) {
+                Button {
+                    isPresentingNewMedicationFlow = true
+                } label: {
                     Label("Add Item", systemImage: "plus")
                 }
             }
@@ -95,6 +104,13 @@ struct MedicationListView: View {
                 }
             }
         }
+        .sheet(isPresented: $isPresentingNewMedicationFlow) {
+            NewMedicationFlow(
+                viewModel: viewModel,
+                isPresented: $isPresentingNewMedicationFlow,
+                initialDate: selectedDate
+            )
+        }
         .onAppear {
             viewModel.configure(modelContext: modelContext)
         }
@@ -111,12 +127,6 @@ struct MedicationListView: View {
         case 6: return "星期五"
         case 7: return "星期六"
         default: return ""
-        }
-    }
-
-    private func addItem() {
-        withAnimation {
-            viewModel.addItem()
         }
     }
 
