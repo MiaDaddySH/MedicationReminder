@@ -1,6 +1,8 @@
 import SwiftUI
+import SwiftData
 
 struct NewMedicationFlow: View {
+    @Environment(\.modelContext) private var modelContext
     @ObservedObject var viewModel: MedicationListViewModel
     @Binding var isPresented: Bool
     @State private var step: Step = .selectMedication
@@ -8,6 +10,8 @@ struct NewMedicationFlow: View {
     @State private var date: Date
     @State private var time: Date = Date()
     @State private var amount: String = ""
+    @State private var medications: [Medication] = []
+    @State private var searchText: String = ""
 
     enum Step {
         case selectMedication
@@ -40,6 +44,9 @@ struct NewMedicationFlow: View {
                         }
                     }
                 }
+                .onAppear {
+                    loadMedications()
+                }
         }
     }
 
@@ -48,18 +55,47 @@ struct NewMedicationFlow: View {
         switch step {
         case .selectMedication:
             Form {
-                Section("药物") {
-                    TextField("药名", text: $name)
-                }
-                Section {
-                    Button("下一步") {
-                        step = .schedule
+                Section("常用药物目录") {
+                    if medications.isEmpty {
+                        Text("暂无常用药物，请先在“药物”页添加")
+                            .foregroundStyle(.secondary)
+                    } else {
+                        ForEach(filteredMedications) { medication in
+                            Button {
+                                selectMedication(medication)
+                            } label: {
+                                VStack(alignment: .leading, spacing: 4) {
+                                    HStack {
+                                        Text(medication.name)
+                                        if !medication.genericName.isEmpty {
+                                            Text("(\(medication.genericName))")
+                                                .font(.subheadline)
+                                                .foregroundStyle(.secondary)
+                                        }
+                                    }
+                                    if !medication.category.isEmpty {
+                                        Text(medication.category)
+                                            .font(.subheadline)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                            }
+                        }
                     }
-                    .disabled(name.isEmpty)
+                }
+                Section("搜索或自定义") {
+                    TextField("药名", text: $searchText)
+                    Button("使用上面的药名") {
+                        useCustomMedication()
+                    }
+                    .disabled(searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
         case .schedule:
             Form {
+                Section("药物") {
+                    Text(name)
+                }
                 Section("日期") {
                     DatePicker(
                         "日期",
@@ -85,5 +121,68 @@ struct NewMedicationFlow: View {
         viewModel.addMedication(name: name, date: date, time: time, amount: amount)
         isPresented = false
     }
-}
 
+    private var filteredMedications: [Medication] {
+        let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.isEmpty {
+            return medications
+        }
+        let lowercased = trimmed.lowercased()
+        return medications.filter { medication in
+            medication.name.lowercased().contains(lowercased) ||
+            medication.genericName.lowercased().contains(lowercased) ||
+            medication.category.lowercased().contains(lowercased)
+        }
+    }
+
+    private func loadMedications() {
+        ensureBuiltinMedicationsSeeded()
+        let descriptor = FetchDescriptor<Medication>(
+            sortBy: [SortDescriptor(\.category), SortDescriptor(\.name)]
+        )
+        do {
+            medications = try modelContext.fetch(descriptor)
+        } catch {
+            medications = []
+        }
+    }
+
+    private func ensureBuiltinMedicationsSeeded() {
+        let descriptor = FetchDescriptor<Medication>()
+        if let existing = try? modelContext.fetch(descriptor), existing.isEmpty {
+            let viewModel = MedicationsViewModel(mode: .catalog)
+            viewModel.configure(modelContext: modelContext)
+        }
+    }
+
+    private func selectMedication(_ medication: Medication) {
+        medication.isFavorite = true
+        try? modelContext.save()
+        loadMedications()
+        name = medication.name
+        step = .schedule
+    }
+
+    private func useCustomMedication() {
+        let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        name = trimmed
+        ensureMedicationExists(named: trimmed)
+        step = .schedule
+    }
+
+    private func ensureMedicationExists(named: String) {
+        let trimmed = named.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        if let existing = medications.first(where: { $0.name == trimmed }) {
+            existing.isFavorite = true
+            try? modelContext.save()
+            loadMedications()
+            return
+        }
+        let medication = Medication(name: trimmed, isFavorite: true)
+        modelContext.insert(medication)
+        try? modelContext.save()
+        loadMedications()
+    }
+}

@@ -2,8 +2,15 @@ import SwiftUI
 import SwiftData
 
 struct MedicationsView: View {
+    private let mode: MedicationsViewModel.Mode
+
     @Environment(\.modelContext) private var modelContext
-    @StateObject private var viewModel = MedicationsViewModel()
+    @StateObject private var viewModel: MedicationsViewModel
+
+    init(mode: MedicationsViewModel.Mode = .favorites) {
+        self.mode = mode
+        _viewModel = StateObject(wrappedValue: MedicationsViewModel(mode: mode))
+    }
     @State private var isPresentingAddMedication = false
 
     var body: some View {
@@ -44,7 +51,7 @@ struct MedicationsView: View {
             }
             .onDelete(perform: deleteMedications)
         }
-        .navigationTitle("药物")
+        .navigationTitle(mode == .favorites ? "我的常用药" : "常用药物目录")
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 EditButton()
@@ -67,7 +74,8 @@ struct MedicationsView: View {
                         category: category,
                         form: form,
                         strength: strength,
-                        notes: notes
+                        notes: notes,
+                        isFavorite: mode == .favorites
                     )
                 }
             )
@@ -83,4 +91,3 @@ struct MedicationsView: View {
         }
     }
 }
-

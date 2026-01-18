@@ -22,7 +22,7 @@ struct ContentView: View {
                 MedicationsView()
             }
             .tabItem {
-                Label("药物", systemImage: "pills")
+                Label("我的常用药", systemImage: "pills")
             }
 
             NavigationStack {

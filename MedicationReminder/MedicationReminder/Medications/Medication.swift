@@ -10,6 +10,7 @@ final class Medication {
     var strength: String
     var notes: String
     var isBuiltin: Bool
+    var isFavorite: Bool
 
     init(
         name: String,
@@ -18,7 +19,8 @@ final class Medication {
         form: String = "",
         strength: String = "",
         notes: String = "",
-        isBuiltin: Bool = false
+        isBuiltin: Bool = false,
+        isFavorite: Bool = false
     ) {
         self.name = name
         self.genericName = genericName
@@ -27,6 +29,6 @@ final class Medication {
         self.strength = strength
         self.notes = notes
         self.isBuiltin = isBuiltin
+        self.isFavorite = isFavorite
     }
 }
-
