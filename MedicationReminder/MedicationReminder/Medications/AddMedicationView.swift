@@ -16,7 +16,8 @@ struct AddMedicationView: View {
         "心血管",
         "糖尿病",
         "感冒发烧",
-        "消化系统"
+        "消化系统",
+        "其他药物"
     ]
 
     private let commonForms = [
@@ -25,6 +26,16 @@ struct AddMedicationView: View {
         "口服液",
         "注射剂"
     ]
+
+    init(
+        isPresented: Binding<Bool>,
+        initialName: String? = nil,
+        onSave: @escaping (String, String, String, String, String, String) -> Void
+    ) {
+        _isPresented = isPresented
+        self.onSave = onSave
+        _name = State(initialValue: initialName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? "")
+    }
 
     var body: some View {
         NavigationStack {
@@ -77,4 +88,3 @@ struct AddMedicationView: View {
         }
     }
 }
-

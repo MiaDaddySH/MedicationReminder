@@ -12,6 +12,7 @@ struct NewMedicationFlow: View {
     @State private var amount: String = ""
     @State private var medications: [Medication] = []
     @State private var searchText: String = ""
+    @State private var isPresentingAddMedication = false
 
     enum Step {
         case selectMedication
@@ -48,6 +49,13 @@ struct NewMedicationFlow: View {
                     loadMedications()
                 }
         }
+        .sheet(isPresented: $isPresentingAddMedication) {
+            AddMedicationView(
+                isPresented: $isPresentingAddMedication,
+                initialName: searchText.trimmingCharacters(in: .whitespacesAndNewlines),
+                onSave: handleCustomMedicationSave
+            )
+        }
     }
 
     @ViewBuilder
@@ -60,32 +68,27 @@ struct NewMedicationFlow: View {
                         Text("暂无常用药物，请先在“药物”页添加")
                             .foregroundStyle(.secondary)
                     } else {
-                        ForEach(filteredMedications) { medication in
-                            Button {
-                                selectMedication(medication)
-                            } label: {
-                                VStack(alignment: .leading, spacing: 4) {
-                                    HStack {
-                                        Text(medication.name)
-                                        if !medication.genericName.isEmpty {
-                                            Text("(\(medication.genericName))")
-                                                .font(.subheadline)
-                                                .foregroundStyle(.secondary)
-                                        }
+                        let grouped = Dictionary(grouping: filteredMedications) { medication in
+                            medication.category
+                        }
+                        let categories = grouped.keys.sorted()
+                        ForEach(categories, id: \.self) { category in
+                            let displayName = categoryDisplayName(for: category)
+                            NavigationLink(displayName) {
+                                MedicationCategorySelectionView(
+                                    title: displayName,
+                                    medications: grouped[category] ?? [],
+                                    onSelect: { medication in
+                                        selectMedication(medication)
                                     }
-                                    if !medication.category.isEmpty {
-                                        Text(medication.category)
-                                            .font(.subheadline)
-                                            .foregroundStyle(.secondary)
-                                    }
-                                }
+                                )
                             }
                         }
                     }
                 }
                 Section("搜索或自定义") {
                     TextField("药名", text: $searchText)
-                    Button("使用上面的药名") {
+                    Button("使用这个药名添加药物") {
                         useCustomMedication()
                     }
                     .disabled(searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
@@ -160,15 +163,15 @@ struct NewMedicationFlow: View {
         try? modelContext.save()
         loadMedications()
         name = medication.name
-        step = .schedule
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            step = .schedule
+        }
     }
 
     private func useCustomMedication() {
         let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
-        name = trimmed
-        ensureMedicationExists(named: trimmed)
-        step = .schedule
+        isPresentingAddMedication = true
     }
 
     private func ensureMedicationExists(named: String) {
@@ -184,5 +187,99 @@ struct NewMedicationFlow: View {
         modelContext.insert(medication)
         try? modelContext.save()
         loadMedications()
+    }
+
+    private func handleCustomMedicationSave(
+        name: String,
+        genericName: String,
+        category: String,
+        form: String,
+        strength: String,
+        notes: String
+    ) {
+        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmedName.isEmpty else { return }
+
+        if let existing = medications.first(where: { $0.name == trimmedName }) {
+            existing.genericName = genericName
+            existing.category = category
+            existing.form = form
+            existing.strength = strength
+            existing.notes = notes
+            existing.isFavorite = true
+            try? modelContext.save()
+            loadMedications()
+            self.name = trimmedName
+            step = .schedule
+            return
+        }
+
+        let medication = Medication(
+            name: trimmedName,
+            genericName: genericName,
+            category: category,
+            form: form,
+            strength: strength,
+            notes: notes,
+            isBuiltin: false,
+            isFavorite: true
+        )
+        modelContext.insert(medication)
+        try? modelContext.save()
+        loadMedications()
+        self.name = trimmedName
+        step = .schedule
+    }
+
+    private func categoryDisplayName(for category: String) -> String {
+        if category.isEmpty {
+            return "其他药物"
+        }
+        if category == "高血压" {
+            return "高血压药"
+        }
+        if category == "糖尿病" {
+            return "糖尿病药"
+        }
+        return category
+    }
+}
+
+struct MedicationCategorySelectionView: View {
+    let title: String
+    let medications: [Medication]
+    let onSelect: (Medication) -> Void
+
+    @Environment(\.dismiss) private var dismiss
+
+    var body: some View {
+        List {
+            ForEach(medications) { medication in
+                VStack(alignment: .leading, spacing: 4) {
+                    HStack {
+                        Text(medication.name)
+                        if !medication.genericName.isEmpty {
+                            Text("(\(medication.genericName))")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                    }
+                    if !medication.category.isEmpty {
+                        Text(medication.category)
+                            .font(.subheadline)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+                .contentShape(Rectangle())
+                .onTapGesture {
+                    onSelect(medication)
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.15) {
+                        dismiss()
+                    }
+                }
+            }
+        }
+        .navigationTitle(title)
+        .navigationBarTitleDisplayMode(.inline)
     }
 }
