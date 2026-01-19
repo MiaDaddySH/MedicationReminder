@@ -11,21 +11,9 @@ struct AddMedicationView: View {
     @State private var strength: String = ""
     @State private var notes: String = ""
 
-    private let commonCategories = [
-        "高血压",
-        "心血管",
-        "糖尿病",
-        "感冒发烧",
-        "消化系统",
-        "其他药物"
-    ]
+    private let commonCategories = MedicationCategory.all
 
-    private let commonForms = [
-        "片剂",
-        "胶囊",
-        "口服液",
-        "注射剂"
-    ]
+    private let commonForms = MedicationForm.all
 
     init(
         isPresented: Binding<Bool>,
