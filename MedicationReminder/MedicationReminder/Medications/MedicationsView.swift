@@ -37,7 +37,7 @@ struct MedicationsView: View {
 
     var body: some View {
         content
-            .navigationTitle(mode == .favorites ? "我的常用药" : "常用药物目录")
+            .navigationTitle(mode == .favorites ? "我的药" : "常用药物目录")
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 EditButton()

@@ -15,14 +15,14 @@ struct ContentView: View {
                 MedicationListView()
             }
             .tabItem {
-                Label("要吃的药", systemImage: "list.bullet.clipboard")
+                Label("用药任务", systemImage: "list.bullet.clipboard")
             }
 
             NavigationStack {
                 MedicationsView()
             }
             .tabItem {
-                Label("我的常用药", systemImage: "pills")
+                Label("我的药", systemImage: "pills")
             }
 
             NavigationStack {
