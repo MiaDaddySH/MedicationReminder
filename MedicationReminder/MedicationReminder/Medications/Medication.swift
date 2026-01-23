@@ -11,6 +11,8 @@ final class Medication {
     var notes: String
     var isBuiltin: Bool
     var isFavorite: Bool
+    var dosesPerDay: Int
+    var intervalDays: Int
 
     init(
         name: String,
@@ -20,7 +22,9 @@ final class Medication {
         strength: String = "",
         notes: String = "",
         isBuiltin: Bool = false,
-        isFavorite: Bool = false
+        isFavorite: Bool = false,
+        dosesPerDay: Int = 1,
+        intervalDays: Int = 1
     ) {
         self.name = name
         self.genericName = genericName
@@ -30,5 +34,7 @@ final class Medication {
         self.notes = notes
         self.isBuiltin = isBuiltin
         self.isFavorite = isFavorite
+        self.dosesPerDay = dosesPerDay
+        self.intervalDays = intervalDays
     }
 }

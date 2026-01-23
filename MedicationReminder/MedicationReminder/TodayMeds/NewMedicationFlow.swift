@@ -12,7 +12,6 @@ struct NewMedicationFlow: View {
     @State private var amount: String = ""
     @State private var medications: [Medication] = []
     @State private var searchText: String = ""
-    @State private var isPresentingAddMedication = false
 
     enum Step {
         case selectMedication
@@ -49,13 +48,6 @@ struct NewMedicationFlow: View {
                     loadMedications()
                 }
         }
-        .sheet(isPresented: $isPresentingAddMedication) {
-            AddMedicationView(
-                isPresented: $isPresentingAddMedication,
-                initialName: searchText.trimmingCharacters(in: .whitespacesAndNewlines),
-                onSave: handleCustomMedicationSave
-            )
-        }
     }
 
     @ViewBuilder
@@ -63,9 +55,9 @@ struct NewMedicationFlow: View {
         switch step {
         case .selectMedication:
             Form {
-                Section("常用药物目录") {
+                Section("我的药") {
                     if medications.isEmpty {
-                        Text("暂无常用药物，请先在“药物”页添加")
+                        Text("暂无“我的药”，请先在“我的药”页添加")
                             .foregroundStyle(.secondary)
                     } else {
                         let grouped = Dictionary(grouping: filteredMedications) { medication in
@@ -86,12 +78,8 @@ struct NewMedicationFlow: View {
                         }
                     }
                 }
-                Section("搜索或自定义") {
+                Section("搜索我的药") {
                     TextField("药名", text: $searchText)
-                    Button("使用这个药名添加药物") {
-                        useCustomMedication()
-                    }
-                    .disabled(searchText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
                 }
             }
         case .schedule:
@@ -141,6 +129,7 @@ struct NewMedicationFlow: View {
     private func loadMedications() {
         ensureBuiltinMedicationsSeeded()
         let descriptor = FetchDescriptor<Medication>(
+            predicate: #Predicate { $0.isFavorite == true },
             sortBy: [SortDescriptor(\.category), SortDescriptor(\.name)]
         )
         do {
@@ -159,76 +148,10 @@ struct NewMedicationFlow: View {
     }
 
     private func selectMedication(_ medication: Medication) {
-        medication.isFavorite = true
-        try? modelContext.save()
-        loadMedications()
         name = medication.name
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
             step = .schedule
         }
-    }
-
-    private func useCustomMedication() {
-        let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
-        isPresentingAddMedication = true
-    }
-
-    private func ensureMedicationExists(named: String) {
-        let trimmed = named.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmed.isEmpty else { return }
-        if let existing = medications.first(where: { $0.name == trimmed }) {
-            existing.isFavorite = true
-            try? modelContext.save()
-            loadMedications()
-            return
-        }
-        let medication = Medication(name: trimmed, isFavorite: true)
-        modelContext.insert(medication)
-        try? modelContext.save()
-        loadMedications()
-    }
-
-    private func handleCustomMedicationSave(
-        name: String,
-        genericName: String,
-        category: String,
-        form: String,
-        strength: String,
-        notes: String
-    ) {
-        let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !trimmedName.isEmpty else { return }
-
-        if let existing = medications.first(where: { $0.name == trimmedName }) {
-            existing.genericName = genericName
-            existing.category = category
-            existing.form = form
-            existing.strength = strength
-            existing.notes = notes
-            existing.isFavorite = true
-            try? modelContext.save()
-            loadMedications()
-            self.name = trimmedName
-            step = .schedule
-            return
-        }
-
-        let medication = Medication(
-            name: trimmedName,
-            genericName: genericName,
-            category: category,
-            form: form,
-            strength: strength,
-            notes: notes,
-            isBuiltin: false,
-            isFavorite: true
-        )
-        modelContext.insert(medication)
-        try? modelContext.save()
-        loadMedications()
-        self.name = trimmedName
-        step = .schedule
     }
 
     private func categoryDisplayName(for category: String) -> String {

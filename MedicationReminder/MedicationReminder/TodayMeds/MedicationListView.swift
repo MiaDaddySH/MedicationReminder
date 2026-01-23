@@ -25,7 +25,7 @@ struct MedicationListView: View {
 
     var body: some View {
         List {
-            ForEach(viewModel.items) { item in
+            ForEach(itemsForSelectedDate) { item in
                 NavigationLink {
                     VStack(alignment: .leading, spacing: 8) {
                         Text(item.name)
@@ -35,11 +35,22 @@ struct MedicationListView: View {
                             .foregroundStyle(.secondary)
                     }
                 } label: {
-                    VStack(alignment: .leading, spacing: 4) {
-                        Text(item.name)
-                        Text(item.timestamp, format: Date.FormatStyle(time: .shortened))
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(item.name)
+                                .foregroundStyle(item.isCompleted ? .secondary : .primary)
+                            Text(item.timestamp, format: Date.FormatStyle(time: .shortened))
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                        Spacer()
+                        Button {
+                            viewModel.toggleCompletion(for: item)
+                        } label: {
+                            Image(systemName: item.isCompleted ? "face.smiling.fill" : "face.smiling")
+                                .foregroundStyle(item.isCompleted ? .green : .secondary)
+                        }
+                        .buttonStyle(.borderless)
                     }
                 }
             }
@@ -116,6 +127,12 @@ struct MedicationListView: View {
         }
     }
 
+    private var itemsForSelectedDate: [Item] {
+        viewModel.items.filter { item in
+            Calendar.current.isDate(item.timestamp, inSameDayAs: selectedDate)
+        }
+    }
+
     private func weekdayString(for date: Date) -> String {
         let weekday = Calendar.current.component(.weekday, from: date)
         switch weekday {
@@ -132,7 +149,8 @@ struct MedicationListView: View {
 
     private func deleteItems(offsets: IndexSet) {
         withAnimation {
-            viewModel.deleteItems(at: offsets)
+            let itemsToDelete = offsets.map { itemsForSelectedDate[$0] }
+            viewModel.deleteItems(itemsToDelete)
         }
     }
 }
